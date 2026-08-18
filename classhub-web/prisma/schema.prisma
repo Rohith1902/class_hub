@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      String   @default("student") // "student" | "tutor" | "parent"
+  createdAt DateTime @default(now())
+
+  profile          TutorProfile?
+  bookings         Booking[]
+  studentProfile   StudentProfile?
+  parentLinks      ParentLink[]     @relation("ParentLinks")
+  childLinks       ParentLink[]     @relation("ChildLinks")
+  attendanceMarked AttendanceRecord[] @relation("TutorAttendance")
+  attendance       AttendanceRecord[] @relation("StudentAttendance")
+  progressPosted   ProgressRecord[]  @relation("TutorProgress")
+  progress         ProgressRecord[]  @relation("StudentProgress")
+}
+
+model TutorProfile {
+  id           String  @id @default(uuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind         String  @default("Individual tutor")
+  subjects     String  // stored as JSON string
+  grades       String?
+  location     String?
+  formats      String  // stored as JSON string
+  fee          Int     @default(500)
+  rating       Float   @default(0)
+  reviewsCount Int     @default(0)
+  experience   String?
+  verified     Boolean @default(false)
+  bio          String?
+  achievements String? // stored as JSON string
+  reviews      String? // stored as JSON string
+  batchSize    Int     @default(10)
+}
+
+model StudentProfile {
+  id           String @id @default(uuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio          String?
+  skills       String @default("[]") // JSON array of skill strings
+  achievements String @default("[]") // JSON array of {title, date, icon}
+  friends      String @default("[]") // JSON array of user IDs
+  grade        String?
+  school       String?
+}
+
+model ParentLink {
+  id        String   @id @default(uuid())
+  parentId  String
+  parent    User     @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation("ChildLinks", fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model AttendanceRecord {
+  id        String   @id @default(uuid())
+  tutorId   String
+  tutor     User     @relation("TutorAttendance", fields: [tutorId], references: [id])
+  studentId String
+  student   User     @relation("StudentAttendance", fields: [studentId], references: [id])
+  date      String   // YYYY-MM-DD
+  status    String   @default("present") // "present" | "absent" | "late"
+  subject   String?
+  createdAt DateTime @default(now())
+}
+
+model ProgressRecord {
+  id          String   @id @default(uuid())
+  tutorId     String
+  tutor       User     @relation("TutorProgress", fields: [tutorId], references: [id])
+  studentId   String
+  student     User     @relation("StudentProgress", fields: [studentId], references: [id])
+  type        String   // "homework" | "test" | "mark" | "mentorship" | "appreciation"
+  title       String
+  description String?
+  dueDate     String?
+  score       Int?
+  maxScore    Int?
+  month       String?
+  createdAt   DateTime @default(now())
+}
+
+model Booking {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id])
+  tutorId   String
+  subject   String
+  date      String
+  time      String
+  status    String   @default("Pending")
+  amount    Int
+  notes     String?
+  createdAt DateTime @default(now())
+}

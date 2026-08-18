@@ -1,0 +1,101 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-heading: var(--font-fraunces);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+:root {
+  --background: #F9F9F6;
+  --foreground: #1E251C;
+  --card: #FFFFFF;
+  --card-foreground: #1E251C;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E251C;
+  
+  --primary: #4A5D23;
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #829368;
+  --secondary-foreground: #FFFFFF;
+  
+  --muted: #EAECE6;
+  --muted-foreground: #5C6853;
+  
+  --accent: #829368;
+  --accent-foreground: #FFFFFF;
+  
+  --border: rgba(74, 93, 35, 0.15);
+  --input: rgba(74, 93, 35, 0.15);
+  --ring: #4A5D23;
+  
+  --radius: 1rem;
+}
+
+.dark {
+  --background: #151813;
+  --foreground: #F9F9F6;
+  --card: #1C211A;
+  --card-foreground: #F9F9F6;
+  --popover: #1C211A;
+  --popover-foreground: #F9F9F6;
+  
+  --primary: #829368;
+  --primary-foreground: #151813;
+  
+  --secondary: #4A5D23;
+  --secondary-foreground: #FFFFFF;
+  
+  --muted: #272E24;
+  --muted-foreground: #A1A89A;
+  
+  --accent: #4A5D23;
+  --accent-foreground: #FFFFFF;
+  
+  --border: rgba(130, 147, 104, 0.2);
+  --input: rgba(130, 147, 104, 0.2);
+  --ring: #829368;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+  .container {
+    @apply mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}

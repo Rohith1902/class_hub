@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/db";
+import { AttendanceStatus } from "@prisma/client";
 
 // POST: Tutor marks attendance for today
 export async function POST(req: Request) {
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   const tutorId = session.user.id;
 
   // Upsert each student's attendance
-  for (const [studentId, status] of Object.entries(attendance as Record<string, string>)) {
+  for (const [studentId, status] of Object.entries(attendance as Record<string, AttendanceStatus>)) {
     const existing = await prisma.attendanceRecord.findFirst({
       where: { tutorId, studentId, date: today },
     });

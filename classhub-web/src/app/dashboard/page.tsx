@@ -21,15 +21,26 @@ export default async function DashboardPage() {
   // ─── STUDENT DATA ───────────────────────────────────────────
   if (role === "student") {
     const bookingCount = await prisma.booking.count({ where: { studentId: session.user.id } });
-    const studentProfile = await prisma.studentProfile.findUnique({ where: { userId: session.user.id } });
+    const studentProfile = await prisma.studentProfile.findUnique({ 
+      where: { userId: session.user.id },
+      include: { skills: true, achievements: true } 
+    });
     const recentBookings = await prisma.booking.findMany({
       where: { studentId: session.user.id },
       orderBy: { createdAt: "desc" },
       take: 4,
     });
-    const skills: string[] = studentProfile ? JSON.parse(studentProfile.skills || "[]") : [];
-    const achievements: {title:string;date:string;icon?:string}[] = studentProfile ? JSON.parse(studentProfile.achievements || "[]") : [];
-    const friends: string[] = studentProfile ? JSON.parse(studentProfile.friends || "[]") : [];
+    const skills = studentProfile?.skills.map((s) => s.name) || [];
+    const achievements = studentProfile?.achievements || [];
+    
+    const friendCount = await prisma.friendship.count({
+      where: {
+        OR: [
+          { requesterId: session.user.id, status: "accepted" },
+          { addresseeId: session.user.id, status: "accepted" }
+        ]
+      }
+    });
 
     return (
       <div className="pb-24">
@@ -61,7 +72,7 @@ export default async function DashboardPage() {
               { label: "Classes Booked", value: bookingCount, icon: <BookOpen className="w-5 h-5" />, sub: "Keep it up!" },
               { label: "Skills", value: skills.length, icon: <Star className="w-5 h-5" />, sub: "Add more skills" },
               { label: "Achievements", value: achievements.length, icon: <Trophy className="w-5 h-5" />, sub: "Great work!" },
-              { label: "Friends", value: friends.length, icon: <Users className="w-5 h-5" />, sub: "Expand your circle" },
+              { label: "Friends", value: friendCount, icon: <Users className="w-5 h-5" />, sub: "Expand your circle" },
             ].map((stat, i) => (
               <AnimatedCard key={stat.label} index={i}>
                 <Card className="bg-card border-border shadow-xl shadow-blue-500/5 rounded-2xl h-full overflow-hidden relative group">
@@ -87,7 +98,6 @@ export default async function DashboardPage() {
           <AnimatedCard index={4}>
             <div className="grid gap-4 md:grid-cols-3">
               {[
-                { href: "/dashboard/friends", label: "Find Friends", desc: "See classmates at other tutors", icon: <UserPlus />, color: "blue" },
                 { href: "/dashboard/achievements", label: "My Achievements", desc: "Showcase your skills & wins", icon: <Trophy />, color: "amber" },
                 { href: "/search", label: "Browse Tutors", desc: "Find your perfect teacher", icon: <BookOpen />, color: "emerald" },
               ].map((a) => (
@@ -177,11 +187,6 @@ export default async function DashboardPage() {
               </h1>
               <p className="text-lg text-muted-foreground">Here is your earnings and student activity overview.</p>
             </div>
-            <Link href="/dashboard/classroom">
-              <Button size="lg" className="rounded-xl shadow-xl shadow-primary/20 hover:-translate-y-0.5 transition-all">
-                <Video className="w-4 h-4 mr-2" /> Start Virtual Class
-              </Button>
-            </Link>
           </div>
         </section>
 
@@ -215,7 +220,6 @@ export default async function DashboardPage() {
           <AnimatedCard index={3}>
             <div className="grid gap-4 md:grid-cols-3">
               {[
-                { href: "/dashboard/classroom", label: "Manage Classroom", desc: "Mark attendance & post homework", icon: <Video /> },
                 { href: "/dashboard/earnings", label: "Earnings Report", desc: "View revenue & profit analytics", icon: <BarChart3 /> },
                 { href: "/dashboard/profile", label: "Edit Profile", desc: "Customise your tutor showcase", icon: <Star /> },
               ].map((a) => (

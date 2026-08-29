@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     // Auto-create profile based on role
     if (user.role === "tutor") {
       await prisma.tutorProfile.create({
-        data: { userId: user.id, subjects: "[]", formats: "[]", achievements: "[]", reviews: "[]" },
+        data: { userId: user.id },
       });
     }
 

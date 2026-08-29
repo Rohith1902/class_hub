@@ -199,10 +199,8 @@ async function main() {
       data: {
         userId: user.id,
         kind: t.kind,
-        subjects: JSON.stringify(t.subjects),
         grades: t.grades,
         location: t.location,
-        formats: JSON.stringify(t.formats),
         fee: t.fee,
         rating: t.rating,
         reviewsCount: t.reviewsCount,
@@ -210,8 +208,10 @@ async function main() {
         verified: t.verified,
         batchSize: t.batchSize,
         bio: t.bio,
-        achievements: JSON.stringify(t.achievements),
-        reviews: JSON.stringify(t.reviews),
+        subjects: { create: t.subjects.map(s => ({ subject: s })) },
+        formats: { create: t.formats.map(f => ({ format: f })) },
+        achievements: { create: t.achievements.map((a, i) => ({ title: a, sortOrder: i })) },
+        reviews: { create: t.reviews.map(r => ({ authorName: r.name, rating: r.rating, text: r.text })) }
       }
     });
     console.log(`    ✓ Tutor: ${t.name} (${user.email})`);
@@ -239,9 +239,8 @@ async function main() {
         userId: user.id,
         grade: s.grade,
         school: s.school,
-        skills: JSON.stringify(s.skills),
-        achievements: JSON.stringify(s.achievements),
-        friends: JSON.stringify([]),
+        skills: { create: s.skills.map(skill => ({ name: skill })) },
+        achievements: { create: s.achievements.map((a, i) => ({ title: a.title, date: a.date, icon: a.icon || "🏆", sortOrder: i })) }
       }
     });
     console.log(`    ✓ Student: ${s.name} (${s.email})`);

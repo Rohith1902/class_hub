@@ -3,8 +3,46 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  student
+  tutor
+  parent
+}
+
+enum BookingStatus {
+  Pending
+  Confirmed
+  Completed
+  Cancelled
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+}
+
+enum ProgressType {
+  homework
+  test
+  mark
+  mentorship
+  appreciation
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+}
+
+enum MessageType {
+  chat
+  instruction
+  system
 }
 
 model User {
@@ -12,50 +50,161 @@ model User {
   name      String?
   email     String   @unique
   password  String
-  role      String   @default("student") // "student" | "tutor" | "parent"
+  role      UserRole @default(student)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  profile          TutorProfile?
-  bookings         Booking[]
-  studentProfile   StudentProfile?
-  parentLinks      ParentLink[]     @relation("ParentLinks")
-  childLinks       ParentLink[]     @relation("ChildLinks")
-  attendanceMarked AttendanceRecord[] @relation("TutorAttendance")
-  attendance       AttendanceRecord[] @relation("StudentAttendance")
-  progressPosted   ProgressRecord[]  @relation("TutorProgress")
-  progress         ProgressRecord[]  @relation("StudentProgress")
+  tutorProfile           TutorProfile?
+  studentProfile         StudentProfile?
+  bookingsAsStudent      Booking[]           @relation("StudentBookings")
+  bookingsAsTutor        Booking[]           @relation("TutorBookings")
+  parentLinks            ParentLink[]        @relation("ParentLinks")
+  childLinks             ParentLink[]        @relation("ChildLinks")
+  enrollmentsAsTutor     Enrollment[]        @relation("TutorEnrollments")
+  enrollmentsAsStudent   Enrollment[]        @relation("StudentEnrollments")
+  attendanceMarked       AttendanceRecord[]  @relation("TutorAttendance")
+  attendance             AttendanceRecord[]  @relation("StudentAttendance")
+  progressPosted         ProgressRecord[]    @relation("TutorProgress")
+  progress               ProgressRecord[]    @relation("StudentProgress")
+  sentFriendRequests     Friendship[]        @relation("FriendRequester")
+  receivedFriendRequests Friendship[]        @relation("FriendAddressee")
+  classroomMessages      ClassroomMessage[]
+  shortlists             Shortlist[]         @relation("UserShortlist")
+  shortlistedBy          Shortlist[]         @relation("TutorShortlisted")
+
+  @@index([role])
 }
 
 model TutorProfile {
-  id           String  @id @default(uuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind         String  @default("Individual tutor")
-  subjects     String  // stored as JSON string
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind         String   @default("Individual tutor")
   grades       String?
   location     String?
-  formats      String  // stored as JSON string
-  fee          Int     @default(500)
-  rating       Float   @default(0)
-  reviewsCount Int     @default(0)
+  fee          Int      @default(500)
+  rating       Float    @default(0)
+  reviewsCount Int      @default(0)
   experience   String?
-  verified     Boolean @default(false)
+  verified     Boolean  @default(false)
   bio          String?
-  achievements String? // stored as JSON string
-  reviews      String? // stored as JSON string
-  batchSize    Int     @default(10)
+  batchSize    Int      @default(10)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subjects     TutorSubject[]
+  formats      TutorFormat[]
+  achievements TutorAchievement[]
+  reviews      TutorReview[]
+
+  @@index([verified])
+  @@index([location])
+}
+
+model TutorSubject {
+  id             String       @id @default(uuid())
+  tutorProfileId String
+  tutorProfile   TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)
+  subject        String
+
+  @@unique([tutorProfileId, subject])
+  @@index([subject])
+}
+
+model TutorFormat {
+  id             String       @id @default(uuid())
+  tutorProfileId String
+  tutorProfile   TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)
+  format         String
+
+  @@unique([tutorProfileId, format])
+}
+
+model TutorAchievement {
+  id             String       @id @default(uuid())
+  tutorProfileId String
+  tutorProfile   TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)
+  title          String
+  sortOrder      Int          @default(0)
+
+  @@index([tutorProfileId, sortOrder])
+}
+
+model TutorReview {
+  id             String       @id @default(uuid())
+  tutorProfileId String
+  tutorProfile   TutorProfile @relation(fields: [tutorProfileId], references: [id], onDelete: Cascade)
+  authorName     String
+  rating         Int
+  text           String
+  createdAt      DateTime     @default(now())
+
+  @@index([tutorProfileId, createdAt])
 }
 
 model StudentProfile {
-  id           String @id @default(uuid())
-  userId       String @unique
-  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio          String?
-  skills       String @default("[]") // JSON array of skill strings
-  achievements String @default("[]") // JSON array of {title, date, icon}
-  friends      String @default("[]") // JSON array of user IDs
-  grade        String?
-  school       String?
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio       String?
+  grade     String?
+  school    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills       StudentSkill[]
+  achievements StudentAchievement[]
+}
+
+model StudentSkill {
+  id               String         @id @default(uuid())
+  studentProfileId String
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  name             String
+  level            Int            @default(1)
+
+  @@unique([studentProfileId, name])
+}
+
+model StudentAchievement {
+  id               String         @id @default(uuid())
+  studentProfileId String
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  title            String
+  date             String
+  icon             String         @default("🏆")
+  sortOrder        Int            @default(0)
+
+  @@index([studentProfileId, sortOrder])
+}
+
+model Friendship {
+  id          String           @id @default(uuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(pending)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  tutorId   String
+  studentId String
+  subject   String?
+  createdAt DateTime @default(now())
+
+  tutor   User @relation("TutorEnrollments", fields: [tutorId], references: [id], onDelete: Cascade)
+  student User @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([tutorId, studentId])
+  @@index([studentId])
 }
 
 model ParentLink {
@@ -65,46 +214,90 @@ model ParentLink {
   studentId String
   student   User     @relation("ChildLinks", fields: [studentId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@unique([parentId, studentId])
+  @@index([studentId])
 }
 
 model AttendanceRecord {
-  id        String   @id @default(uuid())
+  id        String           @id @default(uuid())
   tutorId   String
-  tutor     User     @relation("TutorAttendance", fields: [tutorId], references: [id])
+  tutor     User             @relation("TutorAttendance", fields: [tutorId], references: [id], onDelete: Cascade)
   studentId String
-  student   User     @relation("StudentAttendance", fields: [studentId], references: [id])
-  date      String   // YYYY-MM-DD
-  status    String   @default("present") // "present" | "absent" | "late"
+  student   User             @relation("StudentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+  date      String
+  status    AttendanceStatus @default(present)
   subject   String?
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([tutorId, studentId, date])
+  @@index([studentId, date])
 }
 
 model ProgressRecord {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   tutorId     String
-  tutor       User     @relation("TutorProgress", fields: [tutorId], references: [id])
+  tutor       User         @relation("TutorProgress", fields: [tutorId], references: [id], onDelete: Cascade)
   studentId   String
-  student     User     @relation("StudentProgress", fields: [studentId], references: [id])
-  type        String   // "homework" | "test" | "mark" | "mentorship" | "appreciation"
+  student     User         @relation("StudentProgress", fields: [studentId], references: [id], onDelete: Cascade)
+  type        ProgressType
   title       String
   description String?
   dueDate     String?
   score       Int?
   maxScore    Int?
   month       String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([studentId, type, createdAt])
+  @@index([tutorId, createdAt])
 }
 
 model Booking {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   studentId String
-  student   User     @relation(fields: [studentId], references: [id])
+  student   User          @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
   tutorId   String
+  tutor     User          @relation("TutorBookings", fields: [tutorId], references: [id], onDelete: Cascade)
   subject   String
   date      String
   time      String
-  status    String   @default("Pending")
+  status    BookingStatus @default(Pending)
   amount    Int
   notes     String?
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([studentId, status])
+  @@index([tutorId, status])
+  @@index([date])
+}
+
+model ClassroomMessage {
+  id          String      @id @default(uuid())
+  classroomId String
+  authorId    String?
+  author      User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorName  String      @default("Anonymous")
+  text        String
+  type        MessageType @default(chat)
+  createdAt   DateTime    @default(now())
+
+  @@index([classroomId, createdAt])
+}
+
+model Shortlist {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserShortlist", fields: [userId], references: [id], onDelete: Cascade)
+  tutorId   String
+  tutor     User     @relation("TutorShortlisted", fields: [tutorId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@unique([userId, tutorId])
+  @@index([userId])
 }

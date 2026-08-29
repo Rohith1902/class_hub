@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedCard } from "@/components/ui/animated-card";
+import { ShortlistButton } from "@/components/ui/shortlist-button";
 import { MapPin, Star, GraduationCap, CheckCircle2, Search, Filter, BookOpen, ChevronRight } from "lucide-react";
 import { SUBJECTS, LOCATIONS, FORMATS } from "@/lib/data";
 
@@ -20,19 +21,21 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const allTutors = await prisma.tutorProfile.findMany({
     where: {
       bio: { not: null },
-      subjects: { not: "[]" },
+      subjects: { some: {} },
     },
     include: {
       user: {
         select: { name: true }
-      }
+      },
+      subjects: true,
+      formats: true
     }
   });
 
   // Apply filters in JS since SQLite JSON support is limited
   const tutors = allTutors.filter(tutor => {
-    const subjects: string[] = JSON.parse(tutor.subjects || "[]");
-    const formats: string[] = JSON.parse(tutor.formats || "[]");
+    const subjects = tutor.subjects.map((s: { subject: string }) => s.subject);
+    const formats = tutor.formats.map((f: { format: string }) => f.format);
 
     if (subjectFilter && !subjects.some(s => s.toLowerCase().includes(subjectFilter.toLowerCase()))) {
       return false;
@@ -206,13 +209,17 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {tutors.map((tutor, idx) => {
-              const subjects: string[] = JSON.parse(tutor.subjects || "[]");
+              const subjects = tutor.subjects.map((s: { subject: string }) => s.subject);
 
               return (
                 <AnimatedCard key={tutor.userId} index={idx}>
-                  <Link href={`/tutors/${tutor.userId}`} className="group outline-none block h-full">
-                    <Card className="h-full flex flex-col bg-card border-border/40 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group-hover:-translate-y-1.5 rounded-2xl">
-                      <CardHeader className="pb-4">
+                  <div className="relative block h-full">
+                    <div className="absolute top-4 right-4 z-10">
+                      <ShortlistButton tutorId={tutor.userId} />
+                    </div>
+                    <Link href={`/tutors/${tutor.userId}`} className="group outline-none block h-full">
+                      <Card className="h-full flex flex-col bg-card border-border/40 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 group-hover:-translate-y-1.5 rounded-2xl">
+                        <CardHeader className="pb-4">
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex gap-2 items-center">
                             <Badge variant="secondary" className="bg-primary/5 text-primary border-none shadow-none font-medium px-3 py-1">
@@ -264,6 +271,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                       </CardFooter>
                     </Card>
                   </Link>
+                  </div>
                 </AnimatedCard>
               );
             })}

@@ -42,6 +42,7 @@ export default function BookingsPage() {
   const { data: session } = useSession();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
 
   const isTutor = session?.user.role === "tutor";
@@ -61,6 +62,24 @@ export default function BookingsPage() {
       console.error("Failed to fetch bookings:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
+    setUpdating(bookingId);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, status: newStatus }),
+      });
+      if (res.ok) {
+        setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+      }
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    } finally {
+      setUpdating(null);
     }
   };
 
@@ -206,6 +225,28 @@ export default function BookingsPage() {
                         >
                           {STATUS_ICONS[b.status]} {b.status}
                         </Badge>
+                        <div className="flex gap-2 mt-2">
+                          {isTutor && b.status === "Pending" && (
+                            <>
+                              <Button size="sm" variant="outline" className="h-8 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10" disabled={updating === b.id} onClick={() => handleUpdateStatus(b.id, "Confirmed")}>
+                                {updating === b.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm"}
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8 border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updating === b.id} onClick={() => handleUpdateStatus(b.id, "Cancelled")}>
+                                Decline
+                              </Button>
+                            </>
+                          )}
+                          {isTutor && b.status === "Confirmed" && (
+                            <Button size="sm" variant="outline" className="h-8 border-primary/30 text-primary hover:bg-primary/10" disabled={updating === b.id} onClick={() => handleUpdateStatus(b.id, "Completed")}>
+                              {updating === b.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Mark Completed"}
+                            </Button>
+                          )}
+                          {!isTutor && (b.status === "Pending" || b.status === "Confirmed") && (
+                            <Button size="sm" variant="outline" className="h-8 border-destructive/30 text-destructive hover:bg-destructive/10" disabled={updating === b.id} onClick={() => handleUpdateStatus(b.id, "Cancelled")}>
+                              {updating === b.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Cancel"}
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

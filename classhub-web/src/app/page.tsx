@@ -11,12 +11,13 @@ export default async function Home() {
   const tutors = await prisma.tutorProfile.findMany({
     where: {
       bio: { not: null },
-      subjects: { not: "[]" },
+      subjects: { some: {} },
     },
     include: {
       user: {
         select: { name: true }
-      }
+      },
+      subjects: true
     }
   });
 
@@ -96,7 +97,7 @@ export default async function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 auto-rows-auto">
           {tutors.map((tutor, idx) => {
-            const subjects = JSON.parse(tutor.subjects || "[]");
+            const subjects = tutor.subjects.map((s) => s.subject);
             
             return (
               <AnimatedCard key={tutor.userId} index={idx}>

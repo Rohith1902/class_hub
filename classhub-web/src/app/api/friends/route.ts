@@ -13,21 +13,28 @@ export async function POST(req: Request) {
   const { friendId } = await req.json();
   if (!friendId) return NextResponse.json({ error: "friendId required" }, { status: 400 });
 
-  const myProfile = await prisma.studentProfile.findUnique({ where: { userId: session.user.id } });
-  if (!myProfile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-
-  const friends: string[] = JSON.parse(myProfile.friends || "[]");
-  if (friends.includes(friendId)) {
-    return NextResponse.json({ error: "Already friends" }, { status: 400 });
-  }
-
-  friends.push(friendId);
-  await prisma.studentProfile.update({
-    where: { userId: session.user.id },
-    data: { friends: JSON.stringify(friends) },
+  const existingFriendship = await prisma.friendship.findFirst({
+    where: {
+      OR: [
+        { requesterId: session.user.id, addresseeId: friendId },
+        { requesterId: friendId, addresseeId: session.user.id }
+      ]
+    }
   });
 
-  return NextResponse.json({ success: true, friends });
+  if (existingFriendship) {
+    return NextResponse.json({ error: "Already friends or request pending" }, { status: 400 });
+  }
+
+  await prisma.friendship.create({
+    data: {
+      requesterId: session.user.id,
+      addresseeId: friendId,
+      status: "pending"
+    }
+  });
+
+  return NextResponse.json({ success: true });
 }
 
 // GET: Get friend list with profiles
@@ -35,13 +42,22 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const myProfile = await prisma.studentProfile.findUnique({ where: { userId: session.user.id } });
-  const friendIds: string[] = myProfile ? JSON.parse(myProfile.friends || "[]") : [];
-
-  const friends = await prisma.user.findMany({
-    where: { id: { in: friendIds } },
-    select: { id: true, name: true, email: true },
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      OR: [
+        { requesterId: session.user.id, status: "accepted" },
+        { addresseeId: session.user.id, status: "accepted" }
+      ]
+    },
+    include: {
+      requester: { select: { id: true, name: true, email: true } },
+      addressee: { select: { id: true, name: true, email: true } }
+    }
   });
+
+  const friends = friendships.map(f => 
+    f.requesterId === session.user.id ? f.addressee : f.requester
+  );
 
   return NextResponse.json(friends);
 }

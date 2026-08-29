@@ -14,7 +14,7 @@ export default async function ComparePage() {
 
   const tutors = await prisma.tutorProfile.findMany({
     where: { verified: true },
-    include: { user: { select: { name: true } } },
+    include: { user: { select: { name: true } }, subjects: true, formats: true },
     take: 6,
   });
 
@@ -61,8 +61,8 @@ export default async function ComparePage() {
         ) : (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {tutors.map((tutor, i) => {
-              const subjects: string[] = JSON.parse(tutor.subjects || "[]");
-              const formats: string[] = JSON.parse(tutor.formats || "[]");
+              const subjects = tutor.subjects.map((s) => s.subject);
+              const formats = tutor.formats.map((f) => f.format);
 
               return (
                 <Card key={tutor.id}

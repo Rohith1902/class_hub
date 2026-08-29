@@ -6,6 +6,7 @@ import { MapPin, Star, GraduationCap, CheckCircle2, Clock, BookOpen, Award, User
 import { AnimatedCard } from "@/components/ui/animated-card";
 import Link from "next/link";
 import { BookingForm } from "./booking-form";
+import { ReviewForm } from "@/components/ui/review-form";
 
 interface TutorPageProps {
   params: Promise<{ id: string }>;
@@ -15,15 +16,21 @@ export default async function TutorPage({ params }: TutorPageProps) {
   const { id } = await params;
   const profile = await prisma.tutorProfile.findUnique({
     where: { userId: id },
-    include: { user: { select: { name: true } } },
+    include: { 
+      user: { select: { name: true } },
+      reviews: { orderBy: { createdAt: "desc" } },
+      subjects: true,
+      formats: true,
+      achievements: true
+    },
   });
 
   if (!profile) notFound();
 
-  const subjects: string[] = JSON.parse(profile.subjects || "[]");
-  const formats: string[] = JSON.parse(profile.formats || "[]");
-  const achievements: string[] = JSON.parse(profile.achievements || "[]");
-  const reviews: { name: string; rating: number; text: string }[] = JSON.parse(profile.reviews || "[]");
+  const subjects = profile.subjects.map((s) => s.subject);
+  const formats = profile.formats.map((f) => f.format);
+  const achievements = profile.achievements.map((a) => a.title);
+  const reviews = profile.reviews;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -129,8 +136,9 @@ export default async function TutorPage({ params }: TutorPageProps) {
             )}
 
             {/* Reviews */}
-            {reviews.length > 0 && (
-              <AnimatedCard index={3}>
+            <AnimatedCard index={3}>
+              <ReviewForm tutorId={profile.userId} />
+              {reviews.length > 0 && (
                 <Card className="border-border/40 rounded-2xl shadow-xl shadow-primary/5 overflow-hidden">
                   <CardHeader className="border-b border-border/30 bg-card">
                     <div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Star className="w-5 h-5 text-primary" /></div>
@@ -143,7 +151,7 @@ export default async function TutorPage({ params }: TutorPageProps) {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center"><User className="w-4 h-4 text-primary" /></div>
-                            <span className="font-semibold text-foreground text-sm">{r.name}</span>
+                            <span className="font-semibold text-foreground text-sm">{r.authorName}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             {Array.from({ length: 5 }).map((_, j) => (
@@ -159,8 +167,8 @@ export default async function TutorPage({ params }: TutorPageProps) {
                     ))}
                   </CardContent>
                 </Card>
-              </AnimatedCard>
-            )}
+              )}
+            </AnimatedCard>
           </div>
 
           {/* Sidebar */}

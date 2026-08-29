@@ -3,6 +3,13 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/db";
 
+import Razorpay from "razorpay";
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || "",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
+});
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -40,7 +47,31 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, booking }, { status: 201 });
+    // Create Razorpay Order
+    try {
+      const options = {
+        amount: parseInt(amount) * 100, // amount in paise
+        currency: "INR",
+        receipt: `receipt_${booking.id}`,
+        notes: {
+          bookingId: booking.id,
+          studentId: session.user.id,
+          tutorId,
+        },
+      };
+      const order = await razorpay.orders.create(options);
+
+      // Update booking with Razorpay Order ID
+      const updatedBooking = await prisma.booking.update({
+        where: { id: booking.id },
+        data: { razorpayOrderId: order.id },
+      });
+
+      return NextResponse.json({ success: true, booking: updatedBooking, orderId: order.id }, { status: 201 });
+    } catch (rzpError) {
+      console.error("Razorpay order creation failed:", rzpError);
+      return NextResponse.json({ error: "Payment initialization failed. Please try again." }, { status: 500 });
+    }
   } catch (error) {
     console.error("Booking error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

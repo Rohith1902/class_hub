@@ -12,7 +12,6 @@ type NavItem = { href: string; label: string; icon: React.ReactNode };
 const studentNav: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/dashboard/bookings", label: "Bookings", icon: <CalendarDays className="h-4 w-4" /> },
-  { href: "/dashboard/friends", label: "Friends", icon: <Users className="h-4 w-4" /> },
   { href: "/dashboard/achievements", label: "Achievements", icon: <Trophy className="h-4 w-4" /> },
   { href: "/dashboard/profile", label: "Profile", icon: <User className="h-4 w-4" /> },
 ];
@@ -20,7 +19,6 @@ const studentNav: NavItem[] = [
 const tutorNav: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/dashboard/bookings", label: "Bookings", icon: <CalendarDays className="h-4 w-4" /> },
-  { href: "/dashboard/classroom", label: "Classroom", icon: <Video className="h-4 w-4" /> },
   { href: "/dashboard/earnings", label: "Earnings", icon: <BarChart3 className="h-4 w-4" /> },
   { href: "/dashboard/profile", label: "Profile", icon: <User className="h-4 w-4" /> },
 ];

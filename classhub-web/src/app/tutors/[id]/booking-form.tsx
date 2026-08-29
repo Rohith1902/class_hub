@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,12 +53,87 @@ export function BookingForm({ tutorId, tutorName, fee, subjects }: BookingFormPr
       if (!res.ok) {
         const data = await res.json();
         setError(data.error || "Failed to book.");
-      } else {
-        setSuccess(true);
+        setLoading(false);
+        return;
       }
+
+      const { booking, orderId } = await res.json();
+
+      const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder";
+
+      if (rzpKey === "rzp_test_placeholder") {
+        // Mock successful payment flow
+        setTimeout(async () => {
+          try {
+            const verifyRes = await fetch("/api/bookings/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                bookingId: booking.id,
+                razorpay_order_id: orderId,
+                razorpay_payment_id: "pay_mock123",
+                razorpay_signature: "mock_signature_123",
+              }),
+            });
+            if (verifyRes.ok) setSuccess(true);
+            else setError("Mock verification failed.");
+          } catch {
+            setError("Mock verification error.");
+          } finally {
+            setLoading(false);
+          }
+        }, 1500);
+        return;
+      }
+
+      const options = {
+        key: rzpKey,
+        amount: fee * 100,
+        currency: "INR",
+        name: "ClassHub",
+        description: `Booking for ${subject} with ${tutorName}`,
+        order_id: orderId,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch("/api/bookings/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                bookingId: booking.id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+            if (verifyRes.ok) {
+              setSuccess(true);
+            } else {
+              setError("Payment verification failed.");
+            }
+          } catch (err) {
+            setError("Payment verification error.");
+          } finally {
+            setLoading(false);
+          }
+        },
+        prefill: {
+          name: session?.user?.name || "",
+          email: session?.user?.email || "",
+        },
+        theme: {
+          color: "#3b82f6",
+        },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch {
       setError("Something went wrong.");
-    } finally {
       setLoading(false);
     }
   };
@@ -82,8 +158,10 @@ export function BookingForm({ tutorId, tutorName, fee, subjects }: BookingFormPr
   }
 
   return (
-    <Card className="border-border/40 rounded-2xl shadow-xl shadow-primary/5 overflow-hidden">
-      <CardHeader className="border-b border-border/30 bg-card">
+    <>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <Card className="border-border/40 rounded-2xl shadow-xl shadow-primary/5 overflow-hidden">
+        <CardHeader className="border-b border-border/30 bg-card">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-xl">
             <Sparkles className="w-5 h-5 text-primary" />
@@ -184,9 +262,10 @@ export function BookingForm({ tutorId, tutorName, fee, subjects }: BookingFormPr
           className="w-full h-12 rounded-xl shadow-xl shadow-primary/20 hover:-translate-y-0.5 transition-all text-base gap-2"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
-          {loading ? "Booking..." : session ? "Book Now" : "Log in to Book"}
+          {loading ? "Processing..." : session ? "Pay & Book Now" : "Log in to Book"}
         </Button>
       </CardContent>
     </Card>
+    </>
   );
 }

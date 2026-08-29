@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/db";
+import { ProgressType } from "@prisma/client";
 
 // POST: Tutor posts homework / test / mark / mentorship / appreciation
 export async function POST(req: Request) {
@@ -45,7 +46,7 @@ export async function GET(req: Request) {
   const records = await prisma.progressRecord.findMany({
     where: {
       ...(studentId ? { studentId } : {}),
-      ...(type ? { type } : {}),
+      ...(type ? { type: type as ProgressType } : {}),
     },
     orderBy: { createdAt: "desc" },
   });
